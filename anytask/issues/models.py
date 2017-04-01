@@ -273,7 +273,7 @@ class Issue(models.Model):
                         for ext in settings.CONTEST_EXTENSIONS:
                             filename, extension = os.path.splitext(file.name)
                             if ext == extension:
-                                contest_submission = self.contestsubmission_set.create(issue=self, author=author, file=uploaded_file)
+                                contest_submission = self.contestsubmission_set.create(issue=self, author=author, file=uploaded_file, runner_type=self.task.course.runner_type)
                                 sent = contest_submission.upload_contest(ext, compiler_id=value['compilers'][file_id])
                                 if sent:
                                     value['comment'] += u"<p>{0}</p>".format(_(u'otpravleno_v_kontest'))

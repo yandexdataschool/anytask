@@ -17,6 +17,7 @@ from issues.model_issue_status import IssueStatusSystem
 from issues.model_issue_field import IssueField
 from years.models import Year
 from anyrb.common import RbReviewGroup
+from anycontest.common import ContestRunnersEnum
 
 
 def add_group_with_extern(sender, instance, **kwargs):
@@ -129,8 +130,8 @@ class Course(models.Model):
 
     issue_status_system = models.ForeignKey(IssueStatusSystem, db_index=False, null=False, blank=False, default=1)
 
-    jenkins_integrated = models.BooleanField(db_index=False, null=False, blank=False, default=False)
-    git_url = models.CharField(max_length=191, db_index=False, null=False, blank=False, default=False)
+    contest_runner_type = models.IntegerField(null=False, blank=False, default=ContestRunnersEnum.YA_CONTEST, choices=ContestRunnersEnum.RUNNER_CHOISES)
+    git_url = models.CharField(max_length=128, db_index=False, null=True, blank=True)
 
     def __unicode__(self):
         return unicode(self.name)

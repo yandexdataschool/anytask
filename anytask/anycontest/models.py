@@ -5,7 +5,7 @@ from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
 
 from django.contrib.auth.models import User
-from anycontest.common import FakeResponse, escape
+from anycontest.common import FakeResponse, escape, ContestRunnersEnum
 from issues.models import Issue, File
 
 from datetime import datetime
@@ -233,18 +233,6 @@ class Jenkins(object):
 
 
 class ContestSubmission(models.Model):
-    YA_CONTEST = 0
-    JENKINS = 1
-
-    RUNNER_CLASSES = {
-        YA_CONTEST : YaContest
-    }
-
-    RUNNER_CHOISES = (
-        (YA_CONTEST, "Yandex Contest"),
-        (JENKINS, "Jenkins"),
-    )
-
     issue = models.ForeignKey(Issue, db_index=True, null=False, blank=False)
     author = models.ForeignKey(User, null=False, blank=False)
     file = models.ForeignKey(File, null=False, blank=False)
@@ -264,7 +252,7 @@ class ContestSubmission(models.Model):
     message = models.TextField(null=True, blank=True)
     test_number = models.IntegerField(null=True, blank=True)
 
-    runner_type = models.IntegerField(null=False, blank=False, default=YA_CONTEST, choices=RUNNER_CHOISES)
+    runner_type = models.IntegerField(null=False, blank=False, default=ContestRunnersEnum.YA_CONTEST, choices=ContestRunnersEnum.RUNNER_CHOISES)
 
     create_time = models.DateTimeField(auto_now_add=True)
     update_time = models.DateTimeField(auto_now=True)
@@ -272,7 +260,7 @@ class ContestSubmission(models.Model):
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
         self._runners = {
-            self.YA_CONTEST : YaContest(self),
+            ContestRunnersEnum.YA_CONTEST : YaContest(self),
         }
 
     def runner(self):

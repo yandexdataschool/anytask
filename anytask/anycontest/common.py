@@ -12,6 +12,15 @@ from django.contrib.auth.models import User
 
 logger = logging.getLogger('django.request')
 
+class ContestRunnersEnum(object):
+    YA_CONTEST = 0
+    JENKINS = 1
+
+    RUNNER_CHOISES = (
+        (YA_CONTEST, "Yandex Contest"),
+        (JENKINS, "Jenkins"),
+    )
+
 
 class FakeResponse(object):
     def __init__(self):
