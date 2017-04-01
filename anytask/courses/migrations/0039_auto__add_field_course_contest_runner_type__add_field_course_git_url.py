@@ -8,15 +8,23 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        # Adding field 'Course.default_task_send_to_users'
-        db.add_column('courses_course', 'default_task_send_to_users',
-                      self.gf('django.db.models.fields.BooleanField')(default=False),
+        # Adding field 'Course.contest_runner_type'
+        db.add_column('courses_course', 'contest_runner_type',
+                      self.gf('django.db.models.fields.IntegerField')(default=0),
+                      keep_default=False)
+
+        # Adding field 'Course.git_url'
+        db.add_column('courses_course', 'git_url',
+                      self.gf('django.db.models.fields.CharField')(max_length=128, null=True, blank=True),
                       keep_default=False)
 
 
     def backwards(self, orm):
-        # Deleting field 'Course.default_task_send_to_users'
-        db.delete_column('courses_course', 'default_task_send_to_users')
+        # Deleting field 'Course.contest_runner_type'
+        db.delete_column('courses_course', 'contest_runner_type')
+
+        # Deleting field 'Course.git_url'
+        db.delete_column('courses_course', 'git_url')
 
 
     models = {
@@ -61,11 +69,12 @@ class Migration(SchemaMigration):
             'added_time': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now', 'auto_now_add': 'True', 'blank': 'True'}),
             'can_be_chosen_by_extern': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'contest_integrated': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'contest_runner_type': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
             'default_accepted_after_contest_ok': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'default_task_one_file_upload': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
-            'default_task_send_to_users': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'filename_extensions': ('django.db.models.fields.related.ManyToManyField', [], {'blank': 'True', 'related_name': "'filename_extensions_set'", 'null': 'True', 'symmetrical': 'False', 'to': "orm['courses.FilenameExtension']"}),
             'full_transcript': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
+            'git_url': ('django.db.models.fields.CharField', [], {'max_length': '128', 'null': 'True', 'blank': 'True'}),
             'group_with_extern': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'course_with_extern'", 'null': 'True', 'db_index': 'False', 'to': "orm['groups.Group']"}),
             'groups': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'to': "orm['groups.Group']", 'null': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
@@ -84,7 +93,7 @@ class Migration(SchemaMigration):
             'show_task_one_file_upload': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'teachers': ('django.db.models.fields.related.ManyToManyField', [], {'blank': 'True', 'related_name': "'course_teachers_set'", 'null': 'True', 'symmetrical': 'False', 'to': "orm['auth.User']"}),
             'update_time': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now', 'auto_now': 'True', 'blank': 'True'}),
-            'year': ('django.db.models.fields.related.ForeignKey', [], {'default': '2016', 'to': "orm['years.Year']"})
+            'year': ('django.db.models.fields.related.ForeignKey', [], {'default': '2017', 'to': "orm['years.Year']"})
         },
         'courses.coursemarksystem': {
             'Meta': {'object_name': 'CourseMarkSystem'},
@@ -108,12 +117,11 @@ class Migration(SchemaMigration):
             'Meta': {'object_name': 'MarkField'},
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '191', 'db_index': 'True'}),
-            'name_int': ('django.db.models.fields.IntegerField', [], {'default': '0'})
+            'name_int': ('django.db.models.fields.IntegerField', [], {'default': '-1'})
         },
         'courses.studentcoursemark': {
-            'Meta': {'unique_together': "(('student', 'course', 'group'),)", 'object_name': 'StudentCourseMark'},
+            'Meta': {'unique_together': "(('student', 'course'),)", 'object_name': 'StudentCourseMark'},
             'course': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['courses.Course']", 'db_index': 'False'}),
-            'group': ('django.db.models.fields.related.ForeignKey', [], {'db_index': 'False', 'to': "orm['groups.Group']", 'null': 'True', 'blank': 'True'}),
             'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'mark': ('django.db.models.fields.related.ForeignKey', [], {'db_index': 'False', 'to': "orm['courses.MarkField']", 'null': 'True', 'blank': 'True'}),
             'student': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['auth.User']"}),
