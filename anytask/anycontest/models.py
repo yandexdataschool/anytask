@@ -17,32 +17,9 @@ import time
 
 logger = logging.getLogger('django.request')
 
-
-class ContestSubmission(models.Model):
-    issue = models.ForeignKey(Issue, db_index=True, null=False, blank=False)
-    author = models.ForeignKey(User, null=False, blank=False)
-    file = models.ForeignKey(File, null=False, blank=False)
-
-    run_id = models.CharField(max_length=191, blank=True)
-    compiler_id = models.CharField(max_length=191, blank=True)
-    send_error = models.TextField(null=True, blank=True)
-
-    got_verdict = models.BooleanField(default=False)
-    full_response = models.TextField(null=True, blank=True)
-    verdict = models.TextField(null=True, blank=True)
-    precompile_checks = models.TextField(null=True, blank=True)
-    compile_log = models.TextField(null=True, blank=True)
-    used_time = models.IntegerField(null=True, blank=True)
-    used_memory = models.IntegerField(null=True, blank=True)
-    error = models.TextField(null=True, blank=True)
-    message = models.TextField(null=True, blank=True)
-    test_number = models.IntegerField(null=True, blank=True)
-
-    create_time = models.DateTimeField(auto_now_add=True)
-    update_time = models.DateTimeField(auto_now=True)
-
-    def __unicode__(self):
-        return u"{0} {1}".format(self.issue, self.run_id)
+class YaContest(object):
+    def __init__(self, contest_submission):
+        self.contest_submission = contest_submission
 
     def upload_contest(self, extension=None, compiler_id=None):
         problem_req = FakeResponse()
@@ -51,13 +28,13 @@ class ContestSubmission(models.Model):
         message = "OK"
 
         try:
-            issue = self.issue
-            file = self.file
+            issue = self.contest_submission.issue
+            file = self.contest_submission.file
             student_profile = issue.student.get_profile()
             contest_id = issue.task.contest_id
             course = issue.task.course
             if not compiler_id:
-                compiler_id = self.get_compiler_id(extension)
+                compiler_id = self.contest_submission.get_compiler_id(extension)
 
             self.compiler_id = compiler_id[0] if isinstance(compiler_id, list) else compiler_id
 
@@ -67,8 +44,8 @@ class ContestSubmission(models.Model):
                     settings.CONTEST_API_URL + 'status?contestId=' + str(contest_id),
                     headers={'Authorization': 'OAuth ' + OAUTH})
                 if 'error' in reg_req.json():
-                    self.send_error = reg_req.json()["error"]["message"]
-                    self.save()
+                    self.contest_submission.send_error = reg_req.json()["error"]["message"]
+                    self.contest_submission.save()
                     return False
 
                 if not reg_req.json()['result']['isRegistered']:
@@ -77,8 +54,8 @@ class ContestSubmission(models.Model):
                         '&contestId=' + str(contest_id),
                         headers={'Authorization': 'OAuth ' + settings.CONTEST_OAUTH})
                 if 'error' in reg_req.json():
-                    self.send_error = reg_req.json()["error"]["message"]
-                    self.save()
+                    self.contest_submission.send_error = reg_req.json()["error"]["message"]
+                    self.contest_submission.save()
                     return False
             else:
                 OAUTH = settings.CONTEST_OAUTH
@@ -93,8 +70,8 @@ class ContestSubmission(models.Model):
 
             if problem_id is None:
                 logger.error("Cant find problem_id '%s' for issue '%s'", issue.task.problem_id, issue.id)
-                self.send_error = "Cant find problem '{0}' in Yandex.Contest".format(issue.task.problem_id)
-                self.save()
+                self.contest_submission.send_error = "Cant find problem '{0}' in Yandex.Contest".format(issue.task.problem_id)
+                self.contest_submission.save()
                 return False
 
             for i in range(3):
@@ -111,16 +88,16 @@ class ContestSubmission(models.Model):
                     time.sleep(0.5)
 
             if 'error' in submit_req.json():
-                self.send_error = submit_req.json()["error"]["message"]
-                self.save()
+                self.contest_submission.send_error = submit_req.json()["error"]["message"]
+                self.contest_submission.save()
                 return False
 
             run_id = submit_req.json()['result']['value']
             sent = True
             logger.info("Contest submission with run_id '%s' sent successfully.", run_id)
             issue.set_byname(name='run_id', value=run_id)
-            self.run_id = run_id
-            self.save()
+            self.contest_submission.run_id = run_id
+            self.contest_submission.save()
         except Exception as e:
             logger.exception("Exception while request to Contest: '%s' : '%s', '%s' : '%s', Exception: '%s'",
                              problem_req.url, problem_req.json(), submit_req.url, submit_req.json(), e)
@@ -128,13 +105,13 @@ class ContestSubmission(models.Model):
             message = "Unexpected error"
 
         if not sent:
-            self.send_error = message
-            self.save()
+            self.contest_submission.send_error = message
+            self.contest_submission.save()
 
         return sent
 
     def get_compiler_id(self, extension):
-        course_id = self.issue.task.course.id
+        course_id = self.contest_submission.issue.task.course.id
         compiler_id = settings.CONTEST_EXTENSIONS[extension]
         if course_id not in settings.CONTEST_EXTENSIONS_COURSE:
             return compiler_id
@@ -146,11 +123,11 @@ class ContestSubmission(models.Model):
 
     def check_submission(self):
         results_req = FakeResponse()
-        issue = self.issue
+        issue = self.contest_submission.issue
         comment = ''
 
         try:
-            run_id = self.run_id
+            run_id = self.contest_submission.run_id
             student_profile = issue.student.get_profile()
             course = issue.task.course
             if student_profile.ya_contest_oauth and course.send_to_contest_from_users:
@@ -163,29 +140,29 @@ class ContestSubmission(models.Model):
                 headers={'Authorization': 'OAuth ' + OAUTH})
 
             results_req_json = results_req.json()
-            self.full_response = results_req_json
+            self.contest_submission.full_response = results_req_json
 
             contest_verdict = results_req_json['result']['submission']['verdict']
-            self.verdict = contest_verdict
+            self.contest_submission.verdict = contest_verdict
             if contest_verdict == 'ok':
                 comment = u'<p>{0}: ok</p>'.format(_(u'verdikt_jakontest'))
             elif contest_verdict == 'precompile-check-failed':
                 contest_messages = []
                 for precompile_check in results_req_json['result']['precompileChecks']:
                     contest_messages.append(precompile_check['message'])
-                self.precompile_checks = u'\n'.join(contest_messages)
+                self.contest_submission.precompile_checks = u'\n'.join(contest_messages)
                 comment = u'<p>{0}: precompile-check-failed</p><pre>'.format(_(u'verdikt_jakontest')) + \
                           escape(u'\n'.join(contest_messages)) + \
                           u'</pre>'
             else:
-                self.compile_log = results_req_json['result']['compileLog'][18:]
+                self.contest_submission.compile_log = results_req_json['result']['compileLog'][18:]
                 comment = u'<p>{0}: '.format(_(u'verdikt_jakontest')) \
                           + results_req_json['result']['submission']['verdict'] + '</p><pre>' \
                           + escape(results_req_json['result']['compileLog'][18:]) + '</pre>'
                 if results_req_json['result']['tests']:
                     test = results_req_json['result']['tests'][-1]
-                    self.used_time = test['usedTime']
-                    self.used_memory = test['usedMemory']
+                    self.contest_submission.used_time = test['usedTime']
+                    self.contest_submission.used_memory = test['usedMemory']
                     test_resourses = u'<p><u>{0}</u> '.format(_(u'resursy')) + str(test['usedTime']) \
                                      + 'ms/' + '%.2f' % (test['usedMemory']/(1024.*1024)) + 'Mb</p>'
                     if 'input' in test:
@@ -207,20 +184,20 @@ class ContestSubmission(models.Model):
                     else:
                         test_answer = ""
                     if 'error' in test:
-                        self.error = test['error']
+                        self.contest_submission.error = test['error']
                         test_error = u'<p><u>Stderr</u></p><p>' + \
                                      escape(test['error']) if test['error'] else ""
                         test_error += '</p>'
                     else:
                         test_error = ""
                     if 'message' in test:
-                        self.message = test['message']
+                        self.contest_submission.message = test['message']
                         test_message = u'<p><u>{0}</u></p><p>'.format(_(u'soobshenie_chekera')) + \
                                        escape(test['message']) if test['message'] else ""
                         test_message += '</p>'
                     else:
                         test_message = ""
-                    self.test_number = test['testNumber']
+                    self.contest_submission.test_number = test['testNumber']
                     comment += u'<p><u>{0} '.format(_(u'test')) + str(test['testNumber']) + '</u>' \
                                + test_resourses + test_input + test_output \
                                + test_answer + test_error + test_message + '</p>'
@@ -232,7 +209,80 @@ class ContestSubmission(models.Model):
                              results_req.url, results_req.json(), e)
             got_verdict = False
 
-        self.got_verdict = got_verdict
-        self.save()
+        self.contest_submission.got_verdict = got_verdict
+        self.contest_submission.save()
 
         return comment
+
+
+class Jenkins(object):
+    def __init__(self, contest_submission):
+        self.contest_submission = contest_submission
+
+    def runner(self):
+        raise NotImplementedError
+
+    def upload_contest(self, extension=None, compiler_id=None):
+        raise NotImplementedError
+
+    def get_compiler_id(self, extension):
+        raise NotImplementedError
+
+    def check_submission(self):
+        raise NotImplementedError
+
+
+class ContestSubmission(models.Model):
+    YA_CONTEST = 0
+    JENKINS = 1
+
+    RUNNER_CLASSES = {
+        YA_CONTEST : YaContest
+    }
+
+    RUNNER_CHOISES = (
+        (YA_CONTEST, "Yandex Contest"),
+        (JENKINS, "Jenkins"),
+    )
+
+    issue = models.ForeignKey(Issue, db_index=True, null=False, blank=False)
+    author = models.ForeignKey(User, null=False, blank=False)
+    file = models.ForeignKey(File, null=False, blank=False)
+
+    run_id = models.CharField(max_length=191, blank=True)
+    compiler_id = models.CharField(max_length=191, blank=True)
+    send_error = models.TextField(null=True, blank=True)
+
+    got_verdict = models.BooleanField(default=False)
+    full_response = models.TextField(null=True, blank=True)
+    verdict = models.TextField(null=True, blank=True)
+    precompile_checks = models.TextField(null=True, blank=True)
+    compile_log = models.TextField(null=True, blank=True)
+    used_time = models.IntegerField(null=True, blank=True)
+    used_memory = models.IntegerField(null=True, blank=True)
+    error = models.TextField(null=True, blank=True)
+    message = models.TextField(null=True, blank=True)
+    test_number = models.IntegerField(null=True, blank=True)
+
+    runner_type = models.IntegerField(null=False, blank=False, default=YA_CONTEST, choices=RUNNER_CHOISES)
+
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
+
+    def __init__(self, *args, **kwargs):
+        models.Model.__init__(self, *args, **kwargs)
+        self._runners = {
+            self.YA_CONTEST : YaContest(self),
+        }
+
+    def runner(self):
+        return self._runners[self.runner_type]
+
+    def upload_contest(self, extension=None, compiler_id=None):
+        return self.runner().upload_contest(extension, compiler_id)
+
+    def get_compiler_id(self, extension):
+        return self.runner().get_compiler_id(extension)
+
+    def check_submission(self):
+        return self.runner().check_submission()

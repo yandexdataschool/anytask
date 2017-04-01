@@ -101,7 +101,6 @@ class Course(models.Model):
     groups = models.ManyToManyField(Group, null=True, blank=True)
 
     issue_fields = models.ManyToManyField(IssueField, null=True, blank=True)
-
     contest_integrated = models.BooleanField(db_index=False, null=False, blank=False, default=False)
     send_rb_and_contest_together = models.BooleanField(db_index=False, null=False, blank=False, default=False)
     rb_integrated = models.BooleanField(db_index=False, null=False, blank=False, default=False)
@@ -122,7 +121,6 @@ class Course(models.Model):
 
     mark_system = models.ForeignKey(CourseMarkSystem, db_index=False, null=True, blank=True)
 
-
     show_accepted_after_contest_ok = models.BooleanField(db_index=False, null=False, blank=False, default=False)
     default_accepted_after_contest_ok = models.BooleanField(db_index=False, null=False, blank=False, default=False)
 
@@ -130,6 +128,9 @@ class Course(models.Model):
     default_task_one_file_upload = models.BooleanField(db_index=False, null=False, blank=False, default=False)
 
     issue_status_system = models.ForeignKey(IssueStatusSystem, db_index=False, null=False, blank=False, default=1)
+
+    jenkins_integrated = models.BooleanField(db_index=False, null=False, blank=False, default=False)
+    git_url = models.CharField(max_length=191, db_index=False, null=False, blank=False, default=False)
 
     def __unicode__(self):
         return unicode(self.name)

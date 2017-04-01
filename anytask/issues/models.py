@@ -406,6 +406,7 @@ class Issue(models.Model):
     def get_absolute_url(self):
         return reverse('issues.views.issue_page', args=[str(self.id)])
 
+
 class Event(models.Model):
     issue = models.ForeignKey(Issue, null=False, blank=False)
     author = models.ForeignKey(User, db_index=True, null=True, blank=True)
