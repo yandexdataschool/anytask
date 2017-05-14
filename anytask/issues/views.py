@@ -58,7 +58,7 @@ def prepare_info_fields(info_fields, request, issue):
                  'status': _('status'),
                  'mark': _('ocenka'),
                  'file': _('fajl'),
-                 'rewiev_id': _('nomer_revju'),
+                 'review_id': _('nomer_revju'),
                  'run_id': _('nomer_posylki_kontest')
                  }
 
@@ -70,7 +70,7 @@ def prepare_info_fields(info_fields, request, issue):
 
         field.value = issue.get_field_value_for_form(field)
 
-        data = { field.name : field.value }
+        data = {field.name: field.value}
         field.form = field.get_form(request, issue, data)
         field.title = title_map[field.name] if field.name in title_map else field.title
 
@@ -153,7 +153,7 @@ def issue_page(request, issue_id):
                             value = request.user
                         else:
                             if request.user not in value:
-                                value.append(request.user)
+                                value.append(str(request.user.id))
                     if 'Accepted' in request.POST:
                         if request.POST['Accepted']:
                             issue.set_byname('status',
@@ -226,6 +226,7 @@ def issue_page(request, issue_id):
         'statuses_accepted': statuses_accepted,
         'show_contest_rejudge': show_contest_rejudge,
         'show_contest_rejudge_loading': show_contest_rejudge_loading,
+        'show_contest_run_id': issue.task.course.user_can_see_contest_run_id(request.user)
     }
 
     return render_to_response('issues/issue.html', context, context_instance=RequestContext(request))

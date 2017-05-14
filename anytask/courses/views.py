@@ -23,11 +23,12 @@ import urllib, urllib2
 import httplib
 import logging
 import requests
+import reversion
 
 from courses.models import Course, DefaultTeacher, StudentCourseMark, MarkField, FilenameExtension
 from groups.models import Group
 from tasks.models import TaskTaken, Task, TaskGroupRelations
-from tasks.views import update_status_check, prettify_contest_task_text
+from tasks.views import prettify_contest_task_text
 from years.models import Year
 from years.common import get_current_year
 from course_statistics import CourseStatistics
@@ -40,6 +41,7 @@ from issues.model_issue_status import IssueStatus
 from issues.views import contest_rejudge
 from users.forms import InviteActivationForm
 from users.models import UserProfile
+from courses import pythontask
 
 from common.ordered_dict import OrderedDict
 
@@ -146,6 +148,7 @@ def gradebook(request, course_id, task_id=None, group_id=None):
     context['show_academ_users'] = request.session.get(
         str(request.user.id) + '_' + str(course.id) + '_show_academ_users', True)
     context['school'] = schools[0] if schools else ''
+    context['full_width_page'] = True
 
     return render_to_response('courses/gradebook.html', context, context_instance=RequestContext(request))
 
@@ -162,6 +165,9 @@ def course_page(request, course_id):
         raise PermissionDenied
 
     course = get_object_or_404(Course, id=course_id)
+    if course.is_python_task:
+        return pythontask.tasks_list(request, course)
+
     schools = course.school_set.all()
 
     if course.private and not course.user_is_attended(request.user):
@@ -178,9 +184,14 @@ def course_page(request, course_id):
                      'group', 'position')]
     else:
         groups = Group.objects.filter(students=user, course__in=[course])
-        tasks = set([tgr.task for tgr in
-                     TaskGroupRelations.objects.filter(task__course=course, group__in=groups, deleted=False).order_by(
-                         'group', 'position')])
+        tasks = TaskGroupRelations.objects.filter(
+                    task__course=course, group__in=groups, deleted=False
+                ).order_by(
+                    'group', 'position'
+                ).values_list(
+                    'task__id', flat=True
+                ).distinct()
+        tasks = Task.objects.filter(id__in=tasks)
 
     if StudentCourseMark.objects.filter(student=user, course=course):
         mark = StudentCourseMark.objects.get(student=user, course=course).mark
@@ -234,9 +245,14 @@ def seminar_page(request, course_id, task_id):
                      'position')]
     else:
         groups = Group.objects.filter(students=user, course__in=[course])
-        tasks = set([tgr.task for tgr in
-                     TaskGroupRelations.objects.filter(task__parent_task=task, group__in=groups,
-                                                       deleted=False).order_by('group', 'position')])
+        tasks = TaskGroupRelations.objects.filter(
+                    task__course=course, group__in=groups, deleted=False
+                ).order_by(
+                    'group', 'position'
+                ).values_list(
+                    'task__id', flat=True
+                ).distinct()
+        tasks = Task.objects.filter(id__in=tasks)
     if Issue.objects.filter(task=task, student=user):
         mark = Issue.objects.get(task=task, student=user).mark
     else:
@@ -567,25 +583,12 @@ def course_settings(request, course_id):
     else:
         course.filename_extensions.clear()
 
-    if 'show_task_one_file_upload' in request.POST:
-        course.show_task_one_file_upload = True
-    else:
-        course.show_task_one_file_upload = False
-
-    if 'default_task_one_file_upload' in request.POST:
-        course.default_task_one_file_upload = True
-    else:
-        course.default_task_one_file_upload = False
-
-    if 'show_accepted_after_contest_ok' in request.POST:
-        course.show_accepted_after_contest_ok = True
-    else:
-        course.show_accepted_after_contest_ok = False
-
-    if 'default_task_one_file_upload' in request.POST:
-        course.default_accepted_after_contest_ok = True
-    else:
-        course.default_accepted_after_contest_ok = False
+    course.show_task_one_file_upload = 'show_task_one_file_upload' in request.POST
+    course.default_task_send_to_users = 'default_task_send_to_users' in request.POST
+    course.default_task_one_file_upload = 'default_task_one_file_upload' in request.POST
+    course.show_accepted_after_contest_ok = 'show_accepted_after_contest_ok' in request.POST
+    course.default_accepted_after_contest_ok = 'default_accepted_after_contest_ok' in request.POST
+    course.show_contest_run_id = 'show_contest_run_id' in request.POST
 
     course.save()
 
@@ -798,6 +801,10 @@ def ajax_update_contest_tasks(request):
                         task.score_max = problem['score']
 
             task.save()
+
+            reversion.set_user(request.user)
+            reversion.set_comment("Update from contest")
+
             response['tasks_title'][task.id] = task.title
 
     return HttpResponse(json.dumps(response),
