@@ -317,7 +317,7 @@ class Issue(models.Model):
                             if ext == extension:
                                 contest_submission = self.contestsubmission_set.create(
                                     issue=self, author=author, file=uploaded_file,
-                                    runner_type=self.task.course.runner_type
+                                    runner_type=self.task.course.contest_runner_type
                                 )
                                 sent = contest_submission.upload_contest(ext, compiler_id=value['compilers'][file_id])
                                 if sent:

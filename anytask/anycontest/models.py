@@ -215,9 +215,6 @@ class Jenkins(object):
     def __init__(self, contest_submission):
         self.contest_submission = contest_submission
 
-    def runner(self):
-        raise NotImplementedError
-
     def upload_contest(self, extension=None, compiler_id=None):
         raise NotImplementedError
 
@@ -273,4 +270,3 @@ class ContestSubmission(models.Model):
 
     def __unicode__(self):
         return u"{0} {1} {2}".format(self.issue, self.run_id, self.runner_type)
-
