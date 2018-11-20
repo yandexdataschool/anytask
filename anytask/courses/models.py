@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import m2m_changed
 from django.db.models.signals import post_save
 
+from courses.signals import after_save
 from groups.models import Group
 from issues.model_issue_status import IssueStatusSystem
 from issues.model_issue_field import IssueField
@@ -146,6 +147,8 @@ class Course(models.Model):
 
     show_contest_run_id = models.BooleanField(db_index=False, null=False, blank=False, default=True)
 
+    gitlab_integrated = models.BooleanField(db_index=False, null=False, blank=False, default=False)
+
     def __unicode__(self):
         return unicode(self.name)
 
@@ -220,6 +223,7 @@ class Course(models.Model):
     def save(self, *args, **kwargs):
         super(Course, self).save(*args, **kwargs)
         self.add_group_with_extern()
+        # after_save.send(sender=Course, instance=self)
 
     def add_group_with_extern(self):
         if self.group_with_extern is None and self.can_be_chosen_by_extern:

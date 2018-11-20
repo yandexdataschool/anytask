@@ -65,6 +65,7 @@ pycrypto==2.6.1
 pygments==2.2.0           # via ipython, nbconvert
 python-dateutil==2.7.3    # via dateutils, jupyter-client
 python-gettext==3.0
+python-gitlab==1.6.0
 python-magic==0.4.15
 pytz==2018.5              # via dateutils
 pyzmq==17.0.0             # via jupyter-client, notebook
@@ -73,13 +74,14 @@ scandir==1.7              # via pathlib2
 send2trash==1.5.0         # via notebook
 simplegeneric==0.8.1      # via ipython
 singledispatch==3.4.0.3   # via tornado
-six==1.11.0               # via bleach, django-bootstrap-breadcrumbs, django-extensions, html5lib, pathlib2, prompt-toolkit, python-dateutil, singledispatch, traitlets
+six==1.11.0               # via bleach, django-bootstrap-breadcrumbs, django-extensions, html5lib, pathlib2, prompt-toolkit, python-dateutil, python-gitlab, singledispatch, traitlets, transliterate
 south==1.0.2
 sqlparse==0.1.19
 terminado==0.8.1          # via notebook
 testpath==0.3.1           # via nbconvert
 tornado==4.5.3
 traitlets==4.3.2          # via ipykernel, ipython, ipywidgets, jupyter-client, jupyter-core, nbconvert, nbformat, notebook
+transliterate==1.10.2
 unidecode==1.0.22
 urllib3==1.22             # via requests
 wcwidth==0.1.7            # via prompt-toolkit

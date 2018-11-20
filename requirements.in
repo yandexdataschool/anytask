@@ -32,3 +32,5 @@ django-reversion==1.8
 dateutils
 psycopg2
 django_premailer==0.2.0
+python-gitlab
+transliterate
