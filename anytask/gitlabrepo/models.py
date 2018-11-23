@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import base64
 
 from django.conf import settings
@@ -28,12 +30,22 @@ class GitlabRepository(models.Model):
     def __unicode__(self):
         return unicode(self.name)
 
+    class Meta:
+        verbose_name_plural = 'gitlab repositories'
+
 
 class GitlabStudentRepository(models.Model):
     repository = models.ForeignKey(GitlabRepository, related_name='instances')
+    student = models.ForeignKey(User, related_name='gitlab_repositories')
+
+    created_at = models.DateTimeField(auto_now_add=True, default=timezone.now)
+
+    class Meta:
+        verbose_name_plural = 'gitlab student repositories'
 
 
 class GitlabFolder(models.Model):
+    repository = models.ForeignKey(GitlabRepository, related_name='folders')
     task = models.OneToOneField(Task, related_name='gitlab_folder')
     name = models.CharField(max_length=255, db_index=True, unique=True)
 
@@ -45,6 +57,8 @@ class GitlabFolder(models.Model):
 
 
 class GitlabStudentFolder(models.Model):
+    repository = models.ForeignKey(GitlabStudentRepository, related_name='folders')
+    folder = models.ForeignKey(GitlabFolder, related_name='instances')
     issue = models.OneToOneField(Issue, related_name='gitlab_folder')
     name = models.CharField(max_length=255, db_index=True)
 
@@ -165,10 +179,15 @@ def task_post_save_handler(instance, **kwargs):
 
     print('task post save:', instance)
 
-    folder_name = slugify(instance.short_title)
+    folder_name = slugify(instance.short_title or instance.title)
 
     if not hasattr(instance, 'gitlab_folder'):
-        gitlab_folder = GitlabFolder.objects.create(task=instance, name=folder_name)
+
+        try:
+            GitlabFolder.objects.create(task=instance, name=folder_name)
+        except gitlab.GitlabCreateError:
+            pass
+
     else:
         gitlab_folder = GitlabFolder.objects.get(task=instance)
 
@@ -178,20 +197,26 @@ def task_post_save_handler(instance, **kwargs):
 
 
 def make_project_readme(instance, **kwargs):
-    return '# {}\n'.format(instance.name)
+    return '\n'.join([
+        u'# {}'.format(instance.name),
+        '\n{}/course/{}'.format(settings.GITLAB_ANYTASK_REDIRECT_URL, instance.id),
+        u'\n\n{}'.format(instance.information),
+    ])
 
 
 def make_issue_readme(instance, **kwargs):
     task = instance.task
-    return '# {}\n\n{}\n'.format(task.title, task.task_text)
+    return u'\n'.join([
+        u'# {}'.format(task.title),
+        '\n{}/issue/{}'.format(settings.GITLAB_ANYTASK_REDIRECT_URL, instance.id),
+        u'\n{}'.format(task.task_text),
+    ])
 
 
 def issue_post_save_handler(instance, created, **kwargs):
     course = instance.task.course
     if not course.gitlab_integrated:
         return
-
-    print('issue post save:', instance)
 
     if not created:
         return
@@ -201,14 +226,17 @@ def issue_post_save_handler(instance, created, **kwargs):
     repo = course.gitlab_repository
 
     if not hasattr(instance, 'gitlab_folder'):
-        gitlab_folder = GitlabStudentFolder.objects.create(issue=instance, name=folder_name)
+        gitlab_folder = GitlabStudentFolder.objects.create(
+            folder=instance.task.gitlab_folder,
+            issue=instance,
+            name=folder_name,
+        )
     else:
         gitlab_folder = instance.gitlab_folder
 
     # create student account
     gitlab_user_list = gl.users.list(username=student.username)
 
-    gitlab_user_created = False
     if not gitlab_user_list:
         gitlab_user = gl.users.create({
             'email': student.email,
@@ -216,7 +244,6 @@ def issue_post_save_handler(instance, created, **kwargs):
             'username': student.username,
             'name': student.get_full_name(),
         })
-        gitlab_user_created = True
     else:
         gitlab_user = gitlab_user_list[0]
 
@@ -228,31 +255,52 @@ def issue_post_save_handler(instance, created, **kwargs):
         if not e.response_code == 404:
             raise e
 
-        gitlab_project = gitlab_user.projects.create({
+        user_project = gitlab_user.projects.create({
             'path': repo.name,
             'name': repo.name.capitalize(),
             'description': course.information,
-            'visibility': gitlab.VISIBILITY_PRIVATE,
+            'visibility': 'private',
         })
+
+        gitlab_project = gl.projects.get(user_project.id)
 
         # create project README
         gitlab_project.files.create({
             'file_path': 'README.md',
             'branch': 'master',
-            'content': '# %s' % instance.task.course.name,
+            'content': make_project_readme(instance.task.course),
             'commit_message': 'add project README',
+        })
+
+        # create student repo
+        student_repo = GitlabStudentRepository.objects.create(
+            repository=repo,
+            student=student,
+        )
+
+        # add project hook
+        gitlab_project.hooks.create({
+            'url': '{}/gitlab/hooks/{}'.format(settings.GITLAB_ANYTASK_REDIRECT_URL, student_repo.id),
+            'push_events': 1,
+            'merge_requests_events': 1,
+            'note_events': 1,
+            'enable_ssl_verification': 0,
         })
 
     # share project to teacher group
     teacher_group = gl.groups.get(repo.name)
-    gitlab_project.share(teacher_group.id, gitlab.MASTER_ACCESS)
+    try:
+        gitlab_project.share(teacher_group.id, gitlab.MASTER_ACCESS)
+    except gitlab.GitlabCreateError as e:
+        if not e.response_code == 409:
+            raise e
 
     # create issue README
     gitlab_project.files.create({
         'file_path': '%s/README.md' % gitlab_folder.name,
         'branch': 'master',
         'content': make_issue_readme(instance),
-        'commit_message': 'add README.md',
+        'commit_message': "add new task: {}".format(gitlab_folder.name),
     })
 
 

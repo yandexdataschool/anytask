@@ -18,9 +18,19 @@ class Migration(SchemaMigration):
         ))
         db.send_create_signal(u'gitlabrepo', ['GitlabRepository'])
 
+        # Adding model 'GitlabStudentRepository'
+        db.create_table(u'gitlabrepo_gitlabstudentrepository', (
+            (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('repository', self.gf('django.db.models.fields.related.ForeignKey')(related_name='instances', to=orm['gitlabrepo.GitlabRepository'])),
+            ('student', self.gf('django.db.models.fields.related.ForeignKey')(related_name='gitlab_repositories', to=orm['auth.User'])),
+            ('created_at', self.gf('django.db.models.fields.DateTimeField')(default=datetime.datetime.now, auto_now_add=True, blank=True)),
+        ))
+        db.send_create_signal(u'gitlabrepo', ['GitlabStudentRepository'])
+
         # Adding model 'GitlabFolder'
         db.create_table(u'gitlabrepo_gitlabfolder', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('repository', self.gf('django.db.models.fields.related.ForeignKey')(related_name='folders', to=orm['gitlabrepo.GitlabRepository'])),
             ('task', self.gf('django.db.models.fields.related.OneToOneField')(related_name='gitlab_folder', unique=True, to=orm['tasks.Task'])),
             ('name', self.gf('django.db.models.fields.CharField')(unique=True, max_length=255, db_index=True)),
             ('created_at', self.gf('django.db.models.fields.DateTimeField')(default=datetime.datetime.now, auto_now_add=True, blank=True)),
@@ -31,6 +41,8 @@ class Migration(SchemaMigration):
         # Adding model 'GitlabStudentFolder'
         db.create_table(u'gitlabrepo_gitlabstudentfolder', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
+            ('repository', self.gf('django.db.models.fields.related.ForeignKey')(related_name='folders', to=orm['gitlabrepo.GitlabStudentRepository'])),
+            ('folder', self.gf('django.db.models.fields.related.ForeignKey')(related_name='instances', to=orm['gitlabrepo.GitlabFolder'])),
             ('issue', self.gf('django.db.models.fields.related.OneToOneField')(related_name='gitlab_folder', unique=True, to=orm['issues.Issue'])),
             ('name', self.gf('django.db.models.fields.CharField')(max_length=255, db_index=True)),
             ('created_at', self.gf('django.db.models.fields.DateTimeField')(default=datetime.datetime.now, auto_now_add=True, blank=True)),
@@ -51,6 +63,9 @@ class Migration(SchemaMigration):
     def backwards(self, orm):
         # Deleting model 'GitlabRepository'
         db.delete_table(u'gitlabrepo_gitlabrepository')
+
+        # Deleting model 'GitlabStudentRepository'
+        db.delete_table(u'gitlabrepo_gitlabstudentrepository')
 
         # Deleting model 'GitlabFolder'
         db.delete_table(u'gitlabrepo_gitlabfolder')
@@ -164,6 +179,7 @@ class Migration(SchemaMigration):
             'created_at': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now', 'auto_now_add': 'True', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '255', 'db_index': 'True'}),
+            'repository': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'folders'", 'to': u"orm['gitlabrepo.GitlabRepository']"}),
             'task': ('django.db.models.fields.related.OneToOneField', [], {'related_name': "'gitlab_folder'", 'unique': 'True', 'to': u"orm['tasks.Task']"}),
             'updated_at': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now', 'auto_now': 'True', 'blank': 'True'})
         },
@@ -178,9 +194,18 @@ class Migration(SchemaMigration):
         u'gitlabrepo.gitlabstudentfolder': {
             'Meta': {'object_name': 'GitlabStudentFolder'},
             'created_at': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now', 'auto_now_add': 'True', 'blank': 'True'}),
+            'folder': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'instances'", 'to': u"orm['gitlabrepo.GitlabFolder']"}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'issue': ('django.db.models.fields.related.OneToOneField', [], {'related_name': "'gitlab_folder'", 'unique': 'True', 'to': u"orm['issues.Issue']"}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '255', 'db_index': 'True'})
+            'name': ('django.db.models.fields.CharField', [], {'max_length': '255', 'db_index': 'True'}),
+            'repository': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'folders'", 'to': u"orm['gitlabrepo.GitlabStudentRepository']"})
+        },
+        u'gitlabrepo.gitlabstudentrepository': {
+            'Meta': {'object_name': 'GitlabStudentRepository'},
+            'created_at': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now', 'auto_now_add': 'True', 'blank': 'True'}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'repository': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'instances'", 'to': u"orm['gitlabrepo.GitlabRepository']"}),
+            'student': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'gitlab_repositories'", 'to': u"orm['auth.User']"})
         },
         u'groups.group': {
             'Meta': {'unique_together': "(('year', 'name'),)", 'object_name': 'Group'},

@@ -38,4 +38,5 @@ urlpatterns = patterns(
     url(r'^lesson/', include('lessons.urls')),
     url(r'^api/', include('api.urls')),
     url(r'^jupyter/', include('jupyter.urls')),
+    url(r'^gitlab/', include('gitlabrepo.urls')),
 )
