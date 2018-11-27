@@ -226,19 +226,8 @@ def issue_post_save_handler(instance, created, **kwargs):
     if not created:
         return
 
-    folder_name = instance.task.gitlab_folder.name
     student = instance.student
     repo = course.gitlab_repository
-
-    if not hasattr(instance, 'gitlab_folder'):
-        gitlab_folder = GitlabStudentFolder.objects.create(
-            repository=repo,
-            folder=instance.task.gitlab_folder,
-            issue=instance,
-            name=folder_name,
-        )
-    else:
-        gitlab_folder = instance.gitlab_folder
 
     # create student account
     gitlab_user_list = gl.users.list(username=student.username)
@@ -253,9 +242,10 @@ def issue_post_save_handler(instance, created, **kwargs):
     else:
         gitlab_user = gitlab_user_list[0]
 
-    # create student repository
+    # get or create student repository
     try:
         gitlab_project = gl.projects.get('{}/{}'.format(student.username, repo.name))
+        student_repo = repo.instances.filter(student=student).first()
 
     except gitlab.GitlabGetError as e:
         if not e.response_code == 404:
@@ -278,6 +268,7 @@ def issue_post_save_handler(instance, created, **kwargs):
             'commit_message': 'add project README',
         })
 
+        # TODO: store current repo name in the student repo
         # create student repo
         student_repo = GitlabStudentRepository.objects.create(
             repository=repo,
@@ -300,6 +291,17 @@ def issue_post_save_handler(instance, created, **kwargs):
     except gitlab.GitlabCreateError as e:
         if not e.response_code == 409:
             raise e
+
+    # get or create student folder instance
+    if not hasattr(instance, 'gitlab_folder'):
+        gitlab_folder = GitlabStudentFolder.objects.create(
+            repository=student_repo,
+            folder=instance.task.gitlab_folder,
+            issue=instance,
+            name=instance.task.gitlab_folder.name,
+        )
+    else:
+        gitlab_folder = instance.gitlab_folder
 
     # create issue README
     gitlab_project.files.create({
