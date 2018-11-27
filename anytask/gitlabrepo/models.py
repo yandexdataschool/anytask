@@ -179,12 +179,17 @@ def task_post_save_handler(instance, **kwargs):
 
     print('task post save:', instance)
 
+    repo = instance.course.gitlab_repository
     folder_name = slugify(instance.short_title or instance.title)
 
     if not hasattr(instance, 'gitlab_folder'):
 
         try:
-            GitlabFolder.objects.create(task=instance, name=folder_name)
+            GitlabFolder.objects.create(
+                repository=repo,
+                task=instance,
+                name=folder_name,
+            )
         except gitlab.GitlabCreateError:
             pass
 
@@ -227,6 +232,7 @@ def issue_post_save_handler(instance, created, **kwargs):
 
     if not hasattr(instance, 'gitlab_folder'):
         gitlab_folder = GitlabStudentFolder.objects.create(
+            repository=repo,
             folder=instance.task.gitlab_folder,
             issue=instance,
             name=folder_name,
