@@ -34,7 +34,8 @@ def project_hook_view(request, student_repo_id):
                 author = User.objects.get(username='admin')
 
             # project_path = data['project']['path_with_namespace']
-            folder_path = data['object_attributes']['position']['new_path']
+            position_new_path = data['object_attributes']['position']['new_path']
+            folder_path = os.path.normpath(position_new_path).split(os.sep)[0]
             folder_matched = list(student_repo.folders.filter(name=os.path.basename(folder_path)))
             student_folder = folder_matched[0] if folder_matched else None
 

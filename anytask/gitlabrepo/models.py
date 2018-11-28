@@ -245,7 +245,7 @@ def issue_post_save_handler(instance, created, **kwargs):
     # get or create student repository
     try:
         gitlab_project = gl.projects.get('{}/{}'.format(student.username, repo.name))
-        student_repo = repo.instances.filter(student=student).first()
+        student_repo = repo.instances.get(student=student)
 
     except gitlab.GitlabGetError as e:
         if not e.response_code == 404:
